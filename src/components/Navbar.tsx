@@ -11,7 +11,6 @@ export default function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
-      
       if (currentScrollY > lastScrollY && currentScrollY > 80) {
         setIsVisible(false)
       } else {
@@ -26,43 +25,63 @@ export default function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
 
   return (
     <header 
-      className={`fixed top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-md px-6 py-4 transition-transform duration-300 ${
+      className={`fixed top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-md px-6 py-5 transition-transform duration-300 ${
         isVisible ? 'translate-y-0' : '-translate-y-full'
       }`}
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <Link href="/" className="text-xl font-extrabold tracking-tighter flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm">DH</span>
+        {/* Logo Section */}
+        <Link href="/" className="text-2xl font-black tracking-tighter flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
+            <span className="text-white text-base">DH</span>
           </div>
-          Digital Heroes
+          <span className="text-white">Digital Heroes</span>
         </Link>
 
-        <Link href="/charities" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden md:block">
+        {/* Navigation Section */}
+        <div className="flex items-center gap-8">
+          {/* 1. Our Charities */}
+          <Link 
+            href="/charities" 
+            className="text-base font-semibold text-zinc-300 hover:text-white transition-colors"
+          >
             Our Charities
-        </Link>
+          </Link>
 
-        <div className="flex items-center gap-4 text-sm font-medium">
           {isLoggedIn ? (
-            <>
-              <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors hidden sm:block">
+            <div className="flex items-center gap-8">
+              {/* 2. Dashboard*/}
+              <Link 
+                href="/dashboard" 
+                className="text-base font-semibold text-zinc-300 hover:text-white transition-colors"
+              >
                 Dashboard
               </Link>
+              
+              {/* 3. Sign Out*/}
               <form action={signOut}>
-                <button className="bg-zinc-800 text-white px-5 py-2 rounded-full hover:bg-zinc-700 transition-colors shadow-lg border border-zinc-700">
+                <button className="bg-zinc-100 text-zinc-950 px-6 py-2.5 rounded-full font-bold text-sm hover:bg-gray-300 transition-all shadow-xl active:scale-95">
                   Sign Out
                 </button>
               </form>
-            </>
+            </div>
           ) : (
-            <>
-              <Link href="?auth=login" scroll={false} className="text-zinc-400 hover:text-white transition-colors hidden sm:block">
+            <div className="flex items-center gap-6">
+              <Link 
+                href="?auth=login" 
+                scroll={false} 
+                className="text-base font-semibold text-zinc-300 hover:text-white transition-colors"
+              >
                 Sign In
               </Link>
-              <Link href="?auth=register" scroll={false} className="bg-white text-black px-5 py-2 rounded-full hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10">
+              <Link 
+                href="?auth=register" 
+                scroll={false} 
+                className="bg-blue-600 text-white px-7 py-3 rounded-full font-bold text-sm hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+              >
                 Join the Club
               </Link>
-            </>
+            </div>
           )}
         </div>
       </div>

@@ -27,12 +27,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      {/* Notice the pt-[76px] to offset the fixed header! */}
       <body className={`${inter.className} bg-zinc-950 text-zinc-50 min-h-screen flex flex-col pt-[76px]`}>
         
-        {/* Our Smart Navbar */}
-        <Navbar isLoggedIn={!!user} />
-        {/* Our Smart Navbar */}
+        {/* Rendered ONCE: Our Smart Navbar */}
         <Navbar isLoggedIn={!!user} />
 
         {/* Global Auth Modal */}
@@ -40,9 +37,7 @@ export default async function RootLayout({
           <AuthModal />
         </Suspense>
 
-        <main className="flex-1">
-          {children}
-        </main>
+        {/* Rendered ONCE: The main content */}
         <main className="flex-1">
           {children}
         </main>
