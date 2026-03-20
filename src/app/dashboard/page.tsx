@@ -59,6 +59,9 @@ export default async function DashboardPage() {
               {profile.subscription_plan} Plan Active
             </span>
           </div>
+          <Link href="/dashboard/charities" className="bg-gray-300 text-black px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-center shadow-sm">
+            Manage Impact
+          </Link>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
