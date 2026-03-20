@@ -40,6 +40,7 @@ export default function AuthModal() {
     setError(null)
 
     if (isLogin) {
+      // LOGIN FLOW -> Send to Dashboard
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message)
       else {
@@ -47,13 +48,15 @@ export default function AuthModal() {
         router.refresh()
       }
     } else {
+      // REGISTRATION FLOW -> Send to Subscribe Page
       const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) setError(error.message)
       else {
         if (data.user && fullName) {
           await supabase.from('profiles').update({ full_name: fullName }).eq('id', data.user.id)
         }
-        router.push('/dashboard')
+        // PERFECT UX ROUTING: Send new users to the pricing page!
+        router.push('/subscribe')
         router.refresh()
       }
     }

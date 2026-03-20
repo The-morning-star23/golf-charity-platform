@@ -38,6 +38,10 @@ export default function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
           Digital Heroes
         </Link>
 
+        <Link href="/charities" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden md:block">
+            Our Charities
+        </Link>
+
         <div className="flex items-center gap-4 text-sm font-medium">
           {isLoggedIn ? (
             <>
