@@ -23,18 +23,25 @@ export async function login(formData: FormData) {
 
 export async function signup(formData: FormData) {
   const supabase = await createClient()
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+  
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const fullName = formData.get('full_name') as string // Grab the name
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  })
+
+  if (error) throw new Error(error.message)
+
+  // Save the user's name to their database profile!
+  if (data.user && fullName) {
+    await supabase
+      .from('profiles')
+      .update({ full_name: fullName })
+      .eq('id', data.user.id)
   }
 
-  const { error } = await supabase.auth.signUp(data)
-
-  if (error) {
-    // UPDATED: Now redirects back to the register page on error
-    redirect('/register?message=Could not sign you up. Try again.')
-  }
-
-  revalidatePath('/', 'layout')
   redirect('/dashboard')
 }

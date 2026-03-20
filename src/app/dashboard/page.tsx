@@ -2,7 +2,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { addScore, submitWinnerProof } from './actions'
+import { addScore, submitWinnerProof, deleteScore } from './actions'
 import { format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
               {profile.subscription_plan} Plan Active
             </span>
           </div>
-          <Link href="/dashboard/charities" className="bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-zinc-200 transition-colors text-center shadow-sm">
+          <Link href="/dashboard/charities" className="bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors text-center shadow-sm">
             Manage Impact
           </Link>
         </div>
@@ -123,13 +123,34 @@ export default async function DashboardPage() {
               {scores && scores.length > 0 ? (
                 <div className="space-y-3">
                   {scores.map((s) => (
-                    <div key={s.id} className="flex justify-between items-center p-4 rounded-xl border border-zinc-700/50 bg-zinc-800/50 hover:border-zinc-600 transition-colors">
-                      <div className="font-medium text-white">
-                        {format(new Date(s.played_date), 'MMMM d, yyyy')}
+                    <div key={s.id} className="flex justify-between items-center p-4 rounded-xl border border-zinc-700/50 bg-zinc-800/50 hover:border-zinc-600 transition-colors group">
+                      
+                      <div className="flex-1">
+                        <div className="font-medium text-white">
+                          {format(new Date(s.played_date), 'MMMM d, yyyy')}
+                        </div>
                       </div>
-                      <div className="text-2xl font-bold text-blue-500">
-                        {s.score}
+
+                      <div className="flex items-center gap-6">
+                        <div className="text-2xl font-bold text-blue-500">
+                          {s.score}
+                        </div>
+                        
+                        {/* Delete Score Form */}
+                        <form action={deleteScore}>
+                          <input type="hidden" name="score_id" value={s.id} />
+                          <button 
+                            type="submit"
+                            title="Delete Score"
+                            className="text-zinc-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-2 rounded-lg hover:bg-red-500/10 focus:opacity-100"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </form>
                       </div>
+
                     </div>
                   ))}
                 </div>

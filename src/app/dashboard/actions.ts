@@ -63,3 +63,22 @@ export async function submitWinnerProof(formData: FormData) {
   
   revalidatePath('/dashboard')
 }
+
+export async function deleteScore(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const scoreId = formData.get('score_id') as string
+
+  // Securely delete the score ONLY if it belongs to the logged-in user
+  const { error } = await supabase
+    .from('scores')
+    .delete()
+    .eq('id', scoreId)
+    .eq('user_id', user.id)
+
+  if (error) throw new Error('Failed to delete score')
+  
+  revalidatePath('/dashboard')
+}

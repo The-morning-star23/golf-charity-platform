@@ -140,3 +140,20 @@ export async function executeMonthlyDraw() {
   // 8. Refresh the UI
   revalidatePath('/admin')
 }
+
+export async function updateVerificationStatus(formData: FormData) {
+  const winnerId = formData.get('winner_id') as string
+  const status = formData.get('status') as string
+
+  const { error } = await supabaseAdmin
+    .from('draw_winners')
+    .update({ verification_status: status })
+    .eq('id', winnerId)
+
+  if (error) {
+    console.error("🚨 UPDATE ERROR:", error)
+    throw new Error('Failed to update verification status.')
+  }
+
+  revalidatePath('/admin')
+}

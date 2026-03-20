@@ -12,7 +12,7 @@ export async function updateCharityPreferences(formData: FormData) {
   const charityId = formData.get('charity_id') as string
   const percentage = parseInt(formData.get('percentage') as string)
 
-  // Server-side validation matching PRD requirements
+  // Server-side validation
   if (percentage < 10 || percentage > 100) {
     throw new Error('Donation percentage must be between 10% and 100%')
   }
