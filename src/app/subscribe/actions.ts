@@ -16,7 +16,7 @@ export async function createCheckoutSession(priceId: string) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect('/login')
+    redirect('/?auth=login')
   }
 
   // Create the Stripe Checkout session
