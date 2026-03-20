@@ -2,14 +2,35 @@
 'use server'
 
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+// The god-mode admin client for bypassing RLS during admin tasks
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// --- SECURITY GATEKEEPER ---
+// This checks the cookies to ensure the person requesting the action is actually an admin
+async function requireAdmin() {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.is_admin) throw new Error("Unauthorized: Admin access required")
+}
+// ----------------------------
+
 export async function executeMonthlyDraw() {
+  await requireAdmin() // SECURED!
+
   // 1. Fetch all active users
   const { data: activeUsers, error: usersError } = await supabaseAdmin
     .from('profiles')
@@ -142,6 +163,8 @@ export async function executeMonthlyDraw() {
 }
 
 export async function updateVerificationStatus(formData: FormData) {
+  await requireAdmin() // SECURED!
+
   const winnerId = formData.get('winner_id') as string
   const status = formData.get('status') as string
 
@@ -153,6 +176,51 @@ export async function updateVerificationStatus(formData: FormData) {
   if (error) {
     console.error("🚨 UPDATE ERROR:", error)
     throw new Error('Failed to update verification status.')
+  }
+
+  revalidatePath('/admin')
+}
+
+// --- CHARITY MANAGEMENT ACTIONS ---
+
+export async function addCharity(formData: FormData) {
+  await requireAdmin() // SECURED!
+
+  const name = formData.get('name') as string
+  const description = formData.get('description') as string
+  const imageUrl = formData.get('image_url') as string
+  const isFeatured = formData.get('is_featured') === 'on'
+
+  const { error } = await supabaseAdmin
+    .from('charities')
+    .insert({
+      name,
+      description,
+      image_url: imageUrl,
+      is_featured: isFeatured
+    })
+
+  if (error) {
+    console.error("🚨 ADD CHARITY ERROR:", error)
+    throw new Error('Failed to add new charity.')
+  }
+
+  revalidatePath('/admin')
+}
+
+export async function deleteCharity(formData: FormData) {
+  await requireAdmin() // SECURED!
+
+  const charityId = formData.get('charity_id') as string
+
+  const { error } = await supabaseAdmin
+    .from('charities')
+    .delete()
+    .eq('id', charityId)
+
+  if (error) {
+    console.error("🚨 DELETE CHARITY ERROR:", error)
+    throw new Error('Failed to delete charity. It may be linked to existing users.')
   }
 
   revalidatePath('/admin')

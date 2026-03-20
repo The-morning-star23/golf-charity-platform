@@ -12,11 +12,9 @@ export default function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
       
-      // If scrolling down and we've scrolled past the top 80px, hide it
       if (currentScrollY > lastScrollY && currentScrollY > 80) {
         setIsVisible(false)
       } else {
-        // If scrolling up, show it
         setIsVisible(true)
       }
       setLastScrollY(currentScrollY)
@@ -28,7 +26,7 @@ export default function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
 
   return (
     <header 
-      className={`fixed top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 px-6 py-4 transition-transform duration-300 ${
+      className={`fixed top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-md px-6 py-4 transition-transform duration-300 ${
         isVisible ? 'translate-y-0' : '-translate-y-full'
       }`}
     >
@@ -54,10 +52,10 @@ export default function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
             </>
           ) : (
             <>
-              <Link href="/login" className="text-zinc-400 hover:text-white transition-colors hidden sm:block">
+              <Link href="?auth=login" scroll={false} className="text-zinc-400 hover:text-white transition-colors hidden sm:block">
                 Sign In
               </Link>
-              <Link href="/register" className="bg-white text-black px-5 py-2 rounded-full hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10">
+              <Link href="?auth=register" scroll={false} className="bg-white text-black px-5 py-2 rounded-full hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10">
                 Join the Club
               </Link>
             </>

@@ -31,7 +31,7 @@ export default async function LandingPage() {
             The modern golf club built for purpose. Track your scores, fund world-changing charities, and win exclusive monthly draws with every swing.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link href="/register" className="w-full sm:w-auto bg-blue-600 text-white font-semibold px-8 py-4 rounded-full hover:bg-blue-500 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/20 text-lg">
+            <Link href="?auth=register" scroll={false} className="w-full sm:w-auto bg-blue-600 text-white font-semibold px-8 py-4 rounded-full hover:bg-blue-500 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/20 text-lg">
               Start Your Membership
             </Link>
           </div>

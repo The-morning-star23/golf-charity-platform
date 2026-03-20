@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { createClient } from '@/utils/supabase/server'
 import Navbar from '@/components/Navbar'
+import AuthModal from '@/components/AuthModal'
+import { Suspense } from 'react'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,7 +32,17 @@ export default async function RootLayout({
         
         {/* Our Smart Navbar */}
         <Navbar isLoggedIn={!!user} />
+        {/* Our Smart Navbar */}
+        <Navbar isLoggedIn={!!user} />
 
+        {/* Global Auth Modal */}
+        <Suspense fallback={null}>
+          <AuthModal />
+        </Suspense>
+
+        <main className="flex-1">
+          {children}
+        </main>
         <main className="flex-1">
           {children}
         </main>
