@@ -25,12 +25,12 @@ export default async function CharitiesPage() {
     .order('name', { ascending: true })
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="min-h-screen bg-zinc-950 p-4 md:p-8 text-zinc-50">
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Navigation & Header */}
         <div>
-          <Link href="/dashboard" className="text-sm font-medium text-blue-600 hover:text-blue-800 mb-4 inline-block items-center gap-1">
+          <Link href="/dashboard" className="text-sm font-medium text-blue-500 hover:text-blue-400 mb-4 inline-block items-center gap-1 transition-colors">
             ← Back to Clubhouse
           </Link>
           <div className="bg-zinc-900 rounded-2xl shadow-lg p-8 border border-zinc-800">

@@ -44,3 +44,22 @@ export async function addScore(formData: FormData) {
   // Refresh the dashboard page to show the new data
   revalidatePath('/dashboard')
 }
+
+export async function submitWinnerProof(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const winningId = formData.get('winning_id') as string
+  const proofUrl = formData.get('proof_url') as string
+
+  const { error } = await supabase
+    .from('draw_winners')
+    .update({ proof_image_url: proofUrl })
+    .eq('id', winningId)
+    .eq('user_id', user.id) // Security check!
+
+  if (error) throw new Error('Failed to submit proof')
+  
+  revalidatePath('/dashboard')
+}
