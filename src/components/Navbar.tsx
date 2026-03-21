@@ -50,15 +50,23 @@ export default function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
 
           {isLoggedIn ? (
             <div className="flex items-center gap-8">
-              {/* 2. Dashboard*/}
+              {/* 2. Dashboard */}
               <Link 
                 href="/dashboard" 
                 className="text-base font-semibold text-zinc-300 hover:text-white transition-colors"
               >
                 Dashboard
               </Link>
+
+              {/* 3. NEW: Profile Settings */}
+              <Link 
+                href="/dashboard/profile" 
+                className="text-base font-semibold text-zinc-300 hover:text-white transition-colors"
+              >
+                Profile
+              </Link>
               
-              {/* 3. Sign Out*/}
+              {/* 4. Sign Out */}
               <form action={signOut}>
                 <button className="bg-zinc-100 text-zinc-950 px-6 py-2.5 rounded-full font-bold text-sm hover:bg-gray-300 transition-all shadow-xl active:scale-95">
                   Sign Out

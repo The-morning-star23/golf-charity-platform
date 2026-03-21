@@ -82,3 +82,49 @@ export async function deleteScore(formData: FormData) {
   
   revalidatePath('/dashboard')
 }
+
+export async function updateCharityPreference(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const charityId = formData.get('charity_id') as string
+  const percentage = parseInt(formData.get('percentage') as string)
+
+  // Update the user's profile with their impact choices
+  const { error } = await supabase
+    .from('profiles')
+    .update({ 
+      selected_charity_id: charityId,
+      donation_percentage: percentage 
+    })
+    .eq('id', user.id)
+
+  if (error) {
+    console.error("🚨 CHARITY UPDATE ERROR:", error)
+    throw new Error('Failed to update charity preference')
+  }
+
+  revalidatePath('/dashboard')
+}
+
+export async function updateProfile(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const fullName = formData.get('full_name') as string
+
+  // Update the user's name in the profiles table
+  const { error } = await supabase
+    .from('profiles')
+    .update({ full_name: fullName })
+    .eq('id', user.id)
+
+  if (error) {
+    console.error("🚨 PROFILE UPDATE ERROR:", error)
+    throw new Error('Failed to update profile')
+  }
+
+  revalidatePath('/dashboard')
+}
