@@ -11,31 +11,23 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 export async function createCheckoutSession(priceId: string) {
   const supabase = await createClient()
-  
-  // Get the current logged-in user
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/?auth=login')
   }
 
-  // Create the Stripe Checkout session
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     billing_address_collection: 'auto',
     customer_email: user.email,
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
+    line_items: [{ price: priceId, quantity: 1 }],
     mode: 'subscription',
-    // Where Stripe sends them after a successful payment
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`,
-    // Where Stripe sends them if they click the back button
+    
+    // Send them to a success bridge, not the locked dashboard
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
+    
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscribe`,
-    // CRITICAL: This links the Stripe payment back to our Supabase user ID
     client_reference_id: user.id, 
   })
 

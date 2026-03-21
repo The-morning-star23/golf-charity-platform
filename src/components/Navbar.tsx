@@ -22,7 +22,7 @@ export default function Navbar({
       const currentScrollY = window.scrollY
       if (currentScrollY > lastScrollY && currentScrollY > 80) {
         setIsVisible(false)
-        setIsDropdownOpen(false) // Close dropdown on scroll
+        setIsDropdownOpen(false) 
       } else {
         setIsVisible(true)
       }
@@ -66,8 +66,9 @@ export default function Navbar({
 
           {isLoggedIn ? (
             <div className="flex items-center gap-6 md:gap-8">
+              {/* REBRANDED: Clubhouse -> Dashboard */}
               <Link href="/dashboard" className="text-sm font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest">
-                Clubhouse
+                Dashboard
               </Link>
 
               {/* PROFILE DROPDOWN TRIGGER */}
@@ -98,7 +99,7 @@ export default function Navbar({
                       Account Settings
                     </Link>
 
-                    {/* DYNAMIC PLAN LINK (Phase 10 UX) */}
+                    {/* DYNAMIC PLAN LINK */}
                     <Link 
                       href={subscriptionStatus === 'active' ? '/dashboard' : '/subscribe'} 
                       onClick={() => setIsDropdownOpen(false)}
