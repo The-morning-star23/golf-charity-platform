@@ -308,3 +308,35 @@ export async function adminDeleteScore(formData: FormData) {
   if (error) throw new Error('Failed to delete score')
   revalidatePath(`/admin/users/${userId}`)
 }
+
+export async function approveScore(scoreId: string) {
+  const supabase = await createClient();
+  
+  const { error } = await supabase
+    .from('scores')
+    .update({ 
+      is_verified: true, 
+      verified_at: new Date().toISOString() 
+    })
+    .eq('id', scoreId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin');
+  revalidatePath('/dashboard');
+}
+
+export async function approveAllScores() {
+  const supabase = await createClient();
+  
+  const { error } = await supabase
+    .from('scores')
+    .update({ 
+      is_verified: true, 
+      verified_at: new Date().toISOString() 
+    })
+    .eq('is_verified', false);
+
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin');
+  revalidatePath('/dashboard');
+}

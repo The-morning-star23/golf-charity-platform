@@ -1,9 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/utils/supabase/server'
-import { updateVerificationStatus, addCharity, deleteCharity, updateCharity } from './actions'
+import { 
+  updateVerificationStatus, 
+  addCharity, 
+  deleteCharity, 
+  updateCharity,
+  approveScore,
+  approveAllScores 
+} from './actions'
 import DrawControl from './DrawControl'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +48,7 @@ export default async function AdminDashboard({
 
   const { data: allCharities } = await supabase.from('charities').select('*').order('name', { ascending: true })
 
-  // 3. CHARITY REPORT LOGIC (Fixed ESLint warning by using it below)
+  // 3. CHARITY REPORT LOGIC
   const { data: userCharitySelections } = await supabase
     .from('profiles')
     .select('selected_charity_id')
@@ -57,7 +65,13 @@ export default async function AdminDashboard({
 
   const editingCharity = editId ? allCharities?.find(c => c.id === editId) : null;
 
-  // 4. QUEUES & HISTORY (Fixed ESLint warning by using it below)
+  // 4. QUEUES & HISTORY
+  const { data: pendingScores } = await supabase
+    .from('scores')
+    .select('*, profiles(email)')
+    .eq('is_verified', false)
+    .order('created_at', { ascending: false });
+
   const { data: pendingVerifications } = await supabase
     .from('draw_winners')
     .select(`id, match_count, prize_amount, proof_image_url, verification_status, draws ( draw_month ), profiles ( email, full_name )`)
@@ -115,7 +129,51 @@ export default async function AdminDashboard({
           </div>
         </div>
 
-        {/* WINNER REVIEW STATION */}
+        {/* SCORE VERIFICATION STATION (New Section) */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Score <span className="text-blue-500">Verification</span> Station</h2>
+              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-1">{pendingScores?.length || 0} Rounds Pending Audit</p>
+            </div>
+            
+            {pendingScores && pendingScores.length > 0 && (
+              <form action={approveAllScores}>
+                <button className="bg-green-600/10 text-green-500 border border-green-500/20 px-6 py-2 rounded-full text-[10px] font-black uppercase hover:bg-green-600 hover:text-white transition-all shadow-lg shadow-green-500/5">
+                  Approve All Rounds
+                </button>
+              </form>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            {pendingScores && pendingScores.length > 0 ? pendingScores.map((score) => (
+              <div key={score.id} className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 group hover:border-zinc-700 transition-all">
+                <div className="flex-1">
+                  <p className="text-white font-black text-lg">{score.profiles?.email}</p>
+                  <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">
+                    Stableford: <span className="text-blue-500">{score.score}</span> • Played: {format(new Date(score.played_date), 'MMM dd')}
+                  </p>
+                </div>
+                
+                <form action={async () => {
+                  'use server'
+                  await approveScore(score.id)
+                }}>
+                  <button className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/10">
+                    Verify Round
+                  </button>
+                </form>
+              </div>
+            )) : (
+              <div className="text-center py-10 border-2 border-dashed border-zinc-800 rounded-3xl">
+                <p className="text-zinc-600 font-black uppercase text-[10px] tracking-widest">No rounds awaiting verification.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* WINNER REVIEW STATION (Prize Claims) */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
           <h2 className="text-2xl font-black text-white mb-8 uppercase tracking-tighter italic">Winner <span className="text-green-500">Review</span> Station</h2>
           <div className="space-y-4">
