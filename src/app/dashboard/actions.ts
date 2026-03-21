@@ -181,3 +181,26 @@ export async function updateProfile(formData: FormData) {
 
   revalidatePath('/dashboard')
 }
+
+export async function updateScore(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const scoreId = formData.get('score_id') as string
+  const newScore = parseInt(formData.get('new_score') as string)
+
+  if (isNaN(newScore) || newScore < 1 || newScore > 45) {
+    throw new Error('Invalid score.')
+  }
+
+  const { error } = await supabase
+    .from('scores')
+    .update({ score: newScore })
+    .eq('id', scoreId)
+    .eq('user_id', user.id)
+
+  if (error) throw error
+  
+  revalidatePath('/dashboard')
+}
