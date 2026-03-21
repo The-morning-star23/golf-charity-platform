@@ -11,16 +11,38 @@ export default async function DashboardPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) redirect('/')
 
-  // Fetch the user's profile to check subscription status
+  // 1. Fetch the user's profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  // Fetch the user's scores
+  // 2. LIVE JACKPOT MATH (Phase 07 Logic)
+  // Fetch latest draw to get the rollover amount
+  const { data: latestDraw } = await supabase
+    .from('draws')
+    .select('rollover_amount')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  // Count active subscribers to estimate the current month's "New Money" pool
+  const { count: activeUsersCount } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('subscription_status', 'active')
+
+  const previousRollover = latestDraw?.rollover_amount || 0
+  const monthlyNewPool = (activeUsersCount || 0) * 10
+  
+  // The Jackpot is 40% of the current monthly pool plus any previous rollover
+  // Formula: $$EstimatedJackpot = (ActiveUsers \times 10 \times 0.40) + LastRollover$$
+  const estimatedJackpot = (monthlyNewPool * 0.40) + previousRollover
+
+  // 3. Fetch scores and winnings
   const { data: scores } = await supabase
     .from('scores')
     .select('*')
@@ -28,7 +50,6 @@ export default async function DashboardPage() {
     .order('played_date', { ascending: false })
     .order('created_at', { ascending: false })
 
-  // Fetch user's winnings
   const { data: winnings } = await supabase
     .from('draw_winners')
     .select(`
@@ -54,29 +75,65 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 md:p-8 text-zinc-50">
+    <div className="min-h-screen bg-zinc-950 p-4 md:p-8 text-zinc-50 pb-20">
       <div className="max-w-5xl mx-auto space-y-6">
         
-        {/* Header & Status */}
-        <div className="bg-zinc-900 rounded-2xl shadow-lg p-6 md:p-8 border border-zinc-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-1">The Clubhouse</h1>
-            <p className="text-zinc-400">
-              Welcome back, {profile?.full_name || user.email?.split('@')[0]}
-            </p>
+        {/* --- LIVE JACKPOT HERO --- */}
+        <div className="relative overflow-hidden bg-blue-600 rounded-3xl p-8 md:p-12 shadow-2xl shadow-blue-500/20 group">
+          {/* Decorative background elements */}
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700" />
+          
+          <div className="relative flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="text-center md:text-left">
+              <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-[10px] font-bold uppercase tracking-widest text-white mb-4">
+                Current Jackpot Pool
+              </span>
+              <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-2">
+                ${estimatedJackpot.toFixed(2)}
+              </h2>
+              <p className="text-blue-100 font-medium">
+                Log 5 scores to qualify for the next draw.
+              </p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 flex flex-col items-center justify-center min-w-[200px]">
+              <span className="text-blue-200 text-xs font-bold uppercase mb-2">My Qualifiers</span>
+              <div className="text-4xl font-black text-white">{scores?.length || 0} / 5</div>
+              <div className="w-full bg-white/20 h-1.5 rounded-full mt-4 overflow-hidden">
+                <div 
+                  className="bg-white h-full transition-all duration-1000" 
+                  style={{ width: `${Math.min(((scores?.length || 0) / 5) * 100, 100)}%` }} 
+                />
+              </div>
+            </div>
           </div>
-          <div className="bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-700">
-            <span className="text-sm text-zinc-400 block mb-1">Status</span>
-            <span className="text-green-400 font-medium capitalize flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              {profile.subscription_plan} Plan Active
-            </span>
+        </div>
+
+        {/* Header & Status Card */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-zinc-900 rounded-2xl shadow-lg p-6 border border-zinc-800 flex justify-between items-center">
+            <div>
+              <p className="text-zinc-500 text-xs font-bold uppercase mb-1">Welcome Back</p>
+              <h1 className="text-xl font-bold text-white">
+                {profile?.full_name || user.email?.split('@')[0]}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-bold text-green-400 uppercase tracking-tight">{profile.subscription_plan} Plan</span>
+            </div>
           </div>
-          <Link href="/dashboard/charities" className="bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors text-center shadow-sm">
-            Manage Impact
+
+          <Link href="/dashboard/charities" className="bg-zinc-900 rounded-2xl shadow-lg p-6 border border-zinc-800 flex justify-between items-center hover:bg-zinc-800/50 transition-colors">
+            <div>
+              <p className="text-zinc-500 text-xs font-bold uppercase mb-1">Your Impact</p>
+              <p className="text-white font-bold">Manage Charity Preferences</p>
+            </div>
+            <span className="text-blue-500">→</span>
           </Link>
         </div>
 
+        {/* Score Management Grid */}
         <div className="grid md:grid-cols-3 gap-6">
           {/* Score Entry Column */}
           <div className="md:col-span-1 space-y-6">
@@ -124,19 +181,13 @@ export default async function DashboardPage() {
                 <div className="space-y-3">
                   {scores.map((s) => (
                     <div key={s.id} className="flex justify-between items-center p-4 rounded-xl border border-zinc-700/50 bg-zinc-800/50 hover:border-zinc-600 transition-colors group">
-                      
                       <div className="flex-1">
                         <div className="font-medium text-white">
                           {format(new Date(s.played_date), 'MMMM d, yyyy')}
                         </div>
                       </div>
-
                       <div className="flex items-center gap-6">
-                        <div className="text-2xl font-bold text-blue-500">
-                          {s.score}
-                        </div>
-                        
-                        {/* Delete Score Form */}
+                        <div className="text-2xl font-bold text-blue-500">{s.score}</div>
                         <form action={deleteScore}>
                           <input type="hidden" name="score_id" value={s.id} />
                           <button 
@@ -150,7 +201,6 @@ export default async function DashboardPage() {
                           </button>
                         </form>
                       </div>
-
                     </div>
                   ))}
                 </div>
@@ -178,7 +228,7 @@ export default async function DashboardPage() {
           {winnings && winnings.length > 0 ? (
             <div className="space-y-4">
               {winnings.map((win: any) => (
-                <div key={win.id} className="border border-zinc-700/50 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-zinc-800/30">
+                <div key={win.id} className="border border-zinc-800 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-zinc-950">
                   <div>
                     <div className="font-bold text-white">{win.draws?.draw_month} Draw</div>
                     <div className="text-sm text-zinc-400 mt-1">
@@ -216,7 +266,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           ) : (
-             <div className="text-center py-8 text-zinc-500 border-2 border-dashed border-zinc-700 rounded-xl">
+             <div className="text-center py-8 text-zinc-500 border-2 border-dashed border-zinc-800 rounded-xl">
                You haven&apos;t matched any numbers yet. Keep logging scores!
              </div>
           )}
