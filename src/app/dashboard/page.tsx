@@ -95,7 +95,13 @@ export default async function DashboardPage() {
                 <div key={s.id} className="flex justify-between items-center p-4 bg-zinc-950 border border-zinc-800 rounded-2xl group">
                   <div className="flex-1">
                     <p className="font-bold text-white">{format(new Date(s.played_date), 'MMMM dd')}</p>
-                    <p className="text-[10px] text-zinc-600 font-black uppercase">Verified on {format(new Date(s.created_at), 'HH:mm')}</p>
+                    <p className="text-[10px] text-zinc-600 font-black uppercase tracking-wider">
+                      {s.is_verified ? (
+                        <span className="text-green-500">Verified at {format(new Date(s.verified_at || s.created_at), 'HH:mm')}</span>
+                      ) : (
+                        <span className="text-zinc-500">Logged at {format(new Date(s.created_at), 'HH:mm')} • Pending</span>
+                      )}
+                    </p>
                   </div>
                   <div className="flex items-center gap-4">
                     <form action={updateScore} className="flex items-center gap-2">
