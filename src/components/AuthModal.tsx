@@ -31,7 +31,7 @@ export default function AuthModal() {
   if (!isOpen) return null
 
   const closeModal = () => {
-    router.push(pathname, { scroll: false }) // Removes the ?auth= query
+    router.push(pathname, { scroll: false })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

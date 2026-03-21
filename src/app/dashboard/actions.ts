@@ -28,7 +28,7 @@ export async function addScore(formData: FormData) {
 
   if (insertError) throw insertError
 
-  // 2. Enforce the "Latest 5" Rule (PRD Section 05)
+  // 2. Enforce the "Latest 5"
   // Fetch all scores for this user, ordered by date (newest first)
   const { data: scores } = await supabase
     .from('scores')

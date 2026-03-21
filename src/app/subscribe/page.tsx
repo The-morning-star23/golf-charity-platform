@@ -17,7 +17,6 @@ export default function SubscribePage() {
       </div>
 
       <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 items-stretch">
-        {/* Monthly Plan Card - Restyled to Light Dark */}
         <div className="bg-zinc-900 rounded-2xl shadow-xl p-8 flex flex-col border border-zinc-700/50">
           <h2 className="text-2xl font-semibold text-zinc-100 mb-2">Monthly</h2>
           <div className="flex items-baseline gap-1 mb-6 border-b border-zinc-700 pb-6">
@@ -37,7 +36,6 @@ export default function SubscribePage() {
           </form>
         </div>
 
-        {/* Yearly Plan Card - Highlighted, Also Light Dark */}
         <div className="bg-zinc-900 rounded-2xl shadow-2xl p-8 flex flex-col border-2 border-blue-500 relative overflow-hidden">
           {/* Best Value Badge */}
           <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-4 py-1.5 rounded-bl-xl tracking-wide uppercase">
@@ -56,7 +54,6 @@ export default function SubscribePage() {
             <li className="flex items-center gap-3">✓ Premium support</li>
           </ul>
           
-          {/* BEAUTIFUL BLUE BUTTON */}
           <form action={createCheckoutSession.bind(null, yearlyPriceId)} className="w-full">
             <button className="w-full bg-zinc-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-200 hover:bg-blue-500 hover:shadow-blue-500/50 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 focus:ring-4 focus:ring-blue-300 focus:outline-none">
               Subscribe Yearly

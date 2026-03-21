@@ -5,14 +5,12 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-// The god-mode admin client for bypassing RLS during admin tasks
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 // --- SECURITY GATEKEEPER ---
-// This checks the cookies to ensure the person requesting the action is actually an admin
 async function requireAdmin() {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,30 +24,28 @@ async function requireAdmin() {
 
   if (!profile?.is_admin) throw new Error("Unauthorized: Admin access required")
 }
-// ----------------------------
 
-export async function executeMonthlyDraw() {
-  await requireAdmin() // SECURED!
+// --- GENERATE DRAW PREVIEW (Simulation Mode) ---
+export async function generateDrawPreview() {
+  await requireAdmin()
 
   // 1. Fetch all active users
-  const { data: activeUsers, error: usersError } = await supabaseAdmin
+  const { data: activeUsers } = await supabaseAdmin
     .from('profiles')
     .select('id')
     .eq('subscription_status', 'active')
 
-  if (usersError || !activeUsers || activeUsers.length === 0) {
-    throw new Error('Draw failed: No active subscribers found.')
+  if (!activeUsers || activeUsers.length === 0) {
+    throw new Error('No active subscribers found for simulation.')
   }
 
   // 2. Fetch all scores for active users to find their latest 5
   const userIds = activeUsers.map(u => u.id)
-  const { data: allScores, error: scoresError } = await supabaseAdmin
+  const { data: allScores } = await supabaseAdmin
     .from('scores')
-    .select('user_id, score, date_played')
+    .select('user_id, score, played_date')
     .in('user_id', userIds)
-    .order('date_played', { ascending: false })
-
-  if (scoresError) throw new Error('Failed to fetch user scores.')
+    .order('played_date', { ascending: false })
 
   // Group exactly the 5 most recent scores per user
   const userScoresMap = new Map<string, number[]>()
@@ -85,86 +81,93 @@ export async function executeMonthlyDraw() {
   })
 
   // 5. Calculate the Financial Prize Pool
-  // Fetch the previous draw to see if there is a rollover jackpot
   const { data: lastDraw } = await supabaseAdmin
     .from('draws')
     .select('rollover_amount')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   const previousRollover = lastDraw?.rollover_amount || 0
-  
-  // For this MVP, we simulate that $10 from every active user goes to the pool
   const generatedPool = activeUsers.length * 10 
   const totalPool = generatedPool + previousRollover
 
-  // Split per PRD Section 07
   const pool5 = totalPool * 0.40
   const pool4 = totalPool * 0.35
   const pool3 = totalPool * 0.25
 
-  // PRD: "5-Match jackpot carries forward if unclaimed"
-  let currentRollover = 0
-  if (match5.length === 0) {
-    currentRollover = pool5 
+  return {
+    winningNumbers: winningNumbersArray,
+    totalPool,
+    previousRollover,
+    generatedPool,
+    results: {
+      match5: { count: match5.length, userIds: match5, prizePerWinner: match5.length > 0 ? pool5 / match5.length : pool5 },
+      match4: { count: match4.length, userIds: match4, prizePerWinner: match4.length > 0 ? pool4 / match4.length : 0 },
+      match3: { count: match3.length, userIds: match3, prizePerWinner: match3.length > 0 ? pool3 / match3.length : 0 },
+    },
+    willRollover: match5.length === 0,
+    rolloverAmount: match5.length === 0 ? pool5 : 0
   }
+}
 
-  // 6. Save the Draw Event to the database
+// --- COMMIT DRAW (Final Execution) ---
+export async function commitDraw(previewData: any) {
+  await requireAdmin()
+
+  const { winningNumbers, totalPool, rolloverAmount, results } = previewData
   const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
+
+  // 1. Create the Draw record
   const { data: newDraw, error: drawError } = await supabaseAdmin
     .from('draws')
     .insert({
       draw_month: currentMonth,
-      winning_numbers: winningNumbersArray,
+      winning_numbers: winningNumbers,
       total_pool: totalPool,
-      rollover_amount: currentRollover
+      rollover_amount: rolloverAmount
     })
     .select('id')
     .single()
 
-  if (drawError || !newDraw) throw new Error(`Database rejected the draw: ${drawError?.message}`)
+  if (drawError || !newDraw) throw new Error(`Draw failed: ${drawError.message}`)
 
-  // 7. Save the Winners and their splits
+  // 2. Prepare winner inserts
   const winnerInserts: any[] = []
-  
-  const addWinners = (winnersArray: string[], matchCount: number, tierPoolAmount: number) => {
-    if (winnersArray.length > 0) {
-      // PRD: "Prizes split equally among multiple winners in the same tier"
-      const splitPrize = tierPoolAmount / winnersArray.length
-      winnersArray.forEach(userId => {
+
+  const processTier = (tierResults: any, matchCount: number) => {
+    if (tierResults.count > 0) {
+      tierResults.userIds.forEach((userId: string) => {
         winnerInserts.push({
           draw_id: newDraw.id,
           user_id: userId,
           match_count: matchCount,
-          prize_amount: splitPrize,
-          verification_status: 'pending' // Forces them to upload proof later!
+          prize_amount: tierResults.prizePerWinner,
+          verification_status: 'pending'
         })
       })
     }
   }
 
-  addWinners(match5, 5, pool5)
-  addWinners(match4, 4, pool4)
-  addWinners(match3, 3, pool3)
+  processTier(results.match5, 5)
+  processTier(results.match4, 4)
+  processTier(results.match3, 3)
 
   if (winnerInserts.length > 0) {
     const { error: winnerError } = await supabaseAdmin
       .from('draw_winners')
       .insert(winnerInserts)
-    if (winnerError) {
-      console.error("🚨 WINNER INSERT ERROR:", winnerError)
-      throw new Error(`Failed to record winners: ${winnerError.message}`)
-    }
+    if (winnerError) throw new Error(`Winner logging failed: ${winnerError.message}`)
   }
 
-  // 8. Refresh the UI
   revalidatePath('/admin')
+  return { success: true }
 }
 
-export async function updateVerificationStatus(formData: FormData) {
-  await requireAdmin() // SECURED!
+// --- VERIFICATION & CHARITY MANAGEMENT ---
 
+export async function updateVerificationStatus(formData: FormData) {
+  await requireAdmin()
   const winnerId = formData.get('winner_id') as string
   const status = formData.get('status') as string
 
@@ -173,55 +176,29 @@ export async function updateVerificationStatus(formData: FormData) {
     .update({ verification_status: status })
     .eq('id', winnerId)
 
-  if (error) {
-    console.error("🚨 UPDATE ERROR:", error)
-    throw new Error('Failed to update verification status.')
-  }
-
+  if (error) throw new Error('Failed to update verification status.')
   revalidatePath('/admin')
 }
 
-// --- CHARITY MANAGEMENT ACTIONS ---
-
 export async function addCharity(formData: FormData) {
-  await requireAdmin() // SECURED!
-
+  await requireAdmin()
   const name = formData.get('name') as string
   const description = formData.get('description') as string
   const imageUrl = formData.get('image_url') as string
   const isFeatured = formData.get('is_featured') === 'on'
 
-  const { error } = await supabaseAdmin
-    .from('charities')
-    .insert({
-      name,
-      description,
-      image_url: imageUrl,
-      is_featured: isFeatured
-    })
+  const { error } = await supabaseAdmin.from('charities').insert({
+    name, description, image_url: imageUrl, is_featured: isFeatured
+  })
 
-  if (error) {
-    console.error("🚨 ADD CHARITY ERROR:", error)
-    throw new Error('Failed to add new charity.')
-  }
-
+  if (error) throw new Error('Failed to add new charity.')
   revalidatePath('/admin')
 }
 
 export async function deleteCharity(formData: FormData) {
-  await requireAdmin() // SECURED!
-
+  await requireAdmin()
   const charityId = formData.get('charity_id') as string
-
-  const { error } = await supabaseAdmin
-    .from('charities')
-    .delete()
-    .eq('id', charityId)
-
-  if (error) {
-    console.error("🚨 DELETE CHARITY ERROR:", error)
-    throw new Error('Failed to delete charity. It may be linked to existing users.')
-  }
-
+  const { error } = await supabaseAdmin.from('charities').delete().eq('id', charityId)
+  if (error) throw new Error('Failed to delete charity.')
   revalidatePath('/admin')
 }
