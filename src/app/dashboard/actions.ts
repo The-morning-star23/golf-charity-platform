@@ -162,26 +162,6 @@ export async function updateCharityPreference(formData: FormData) {
   revalidatePath('/dashboard')
 }
 
-export async function updateProfile(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const fullName = formData.get('full_name') as string
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({ full_name: fullName })
-    .eq('id', user.id)
-
-  if (error) {
-    console.error("🚨 PROFILE UPDATE ERROR:", error)
-    throw new Error('Failed to update profile')
-  }
-
-  revalidatePath('/dashboard')
-}
-
 export async function updateScore(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -202,5 +182,60 @@ export async function updateScore(formData: FormData) {
 
   if (error) throw error
   
+  revalidatePath('/dashboard')
+}
+
+export async function updateProfile(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const fullName = formData.get('full_name') as string
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ full_name: fullName })
+    .eq('id', user.id)
+
+  if (error) throw error
+  revalidatePath('/dashboard/profile')
+}
+
+// 1. Request Email Change (Triggers OTP to new email)
+export async function requestEmailChange(email: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ email })
+  if (error) throw new Error(error.message)
+}
+
+// 2. Request Phone Change (Triggers OTP to new phone)
+// Note: Phone must be E.164 format (e.g., +447123456789)
+export async function requestPhoneChange(phone: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ phone })
+  if (error) throw new Error(error.message)
+}
+
+// 3. Verify the OTP (This fixes the TS Error 2322)
+export async function verifyUpdateOTP(token: string, type: 'email_change' | 'phone_change', value: string) {
+  const supabase = await createClient()
+
+  // We branch the call here so TypeScript knows exactly which 
+  // fields (email vs phone) are being provided.
+  const { error } = type === 'email_change' 
+    ? await supabase.auth.verifyOtp({
+        token,
+        type: 'email_change',
+        email: value
+      })
+    : await supabase.auth.verifyOtp({
+        token,
+        type: 'phone_change',
+        phone: value
+      })
+
+  if (error) throw new Error(error.message)
+  
+  revalidatePath('/dashboard/profile')
   revalidatePath('/dashboard')
 }

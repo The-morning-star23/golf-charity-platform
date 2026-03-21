@@ -25,19 +25,33 @@ export default async function RootLayout({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // --- NEW: Fetch Subscription Status for the Navbar ---
+  let subscriptionStatus = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_status')
+      .eq('id', user.id)
+      .single()
+    subscriptionStatus = profile?.subscription_status
+  }
+
   return (
     <html lang="en">
       <body className={`${inter.className} bg-zinc-950 text-zinc-50 min-h-screen flex flex-col pt-[76px]`}>
         
-        {/* Rendered ONCE: Our Smart Navbar */}
-        <Navbar isLoggedIn={!!user} />
+        {/* Pass the dynamic status to the Navbar */}
+        <Navbar 
+          isLoggedIn={!!user} 
+          subscriptionStatus={subscriptionStatus} 
+        />
 
         {/* Global Auth Modal */}
         <Suspense fallback={null}>
           <AuthModal />
         </Suspense>
 
-        {/* Rendered ONCE: The main content */}
+        {/* The main content */}
         <main className="flex-1">
           {children}
         </main>

@@ -45,15 +45,22 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // 2. REAL-TIME SUBSCRIPTION VALIDATION
+  // 2. REAL-TIME SUBSCRIPTION VALIDATION (Updated for Profile Exception)
   if (user && pathname.startsWith('/dashboard')) {
+    
+    // EXCEPTION: Allow the user to see their profile even if they aren't paying.
+    // This prevents them from being "locked out" of their own account settings.
+    if (pathname.startsWith('/dashboard/profile')) {
+      return supabaseResponse
+    }
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('subscription_status')
       .eq('id', user.id)
       .single()
 
-    // If they aren't active, they can't be in the dashboard. Send them to pay.
+    // If they aren't active and NOT on the profile page, send them to pay.
     if (profile?.subscription_status !== 'active') {
       const url = request.nextUrl.clone()
       url.pathname = '/subscribe'
