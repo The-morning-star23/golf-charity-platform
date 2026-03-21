@@ -12,6 +12,11 @@ export async function addScore(formData: FormData) {
   const score = parseInt(formData.get('score') as string)
   const played_date = formData.get('played_date') as string
 
+  // STABLEFORD VALIDATION
+  if (isNaN(score) || score < 1 || score > 45) {
+    throw new Error('Invalid score. Please enter a Stableford score between 1 and 45.')
+  }
+
   // 1. Insert the new score
   const { error: insertError } = await supabase
     .from('scores')
