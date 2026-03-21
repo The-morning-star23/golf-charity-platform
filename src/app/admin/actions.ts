@@ -182,17 +182,38 @@ export async function updateVerificationStatus(formData: FormData) {
 
 export async function addCharity(formData: FormData) {
   await requireAdmin()
+
   const name = formData.get('name') as string
   const description = formData.get('description') as string
   const imageUrl = formData.get('image_url') as string
   const isFeatured = formData.get('is_featured') === 'on'
+  
+  // NEW: Handle Event Data
+  const eventName = formData.get('event_name') as string
+  const eventDate = formData.get('event_date') as string
 
-  const { error } = await supabaseAdmin.from('charities').insert({
-    name, description, image_url: imageUrl, is_featured: isFeatured
-  })
+  // If both event fields are filled, package them into an array for the JSONB column
+  const events = eventName && eventDate 
+    ? [{ name: eventName, date: eventDate }] 
+    : []
 
-  if (error) throw new Error('Failed to add new charity.')
+  const { error } = await supabaseAdmin
+    .from('charities')
+    .insert({
+      name,
+      description,
+      image_url: imageUrl,
+      is_featured: isFeatured,
+      events: events
+    })
+
+  if (error) {
+    console.error("🚨 ADD CHARITY ERROR:", error)
+    throw new Error('Failed to add new charity partner.')
+  }
+
   revalidatePath('/admin')
+  revalidatePath('/charities')
 }
 
 export async function deleteCharity(formData: FormData) {
