@@ -2,6 +2,60 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import Stripe from 'stripe'
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2026-02-25.clover', // Ensure this matches your package version
+})
+
+/**
+ * INDEPENDENT DONATION
+ * Creates a one-time Stripe Checkout session for a direct charity gift.
+ */
+export async function createDirectDonationSession(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const charityId = formData.get('charity_id') as string
+  const amount = parseInt(formData.get('amount') as string)
+
+  if (!charityId || isNaN(amount) || amount < 1) {
+    throw new Error('Invalid charity selection or amount.')
+  }
+
+  // Create Stripe Checkout Session for a one-time payment
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `Direct Donation Support`,
+            description: `100% of this contribution is earmarked for our charity partner.`,
+          },
+          unit_amount: amount * 100, // Stripe expects cents
+        },
+        quantity: 1,
+      },
+    ],
+    mode: 'payment',
+    success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/charities?status=success`,
+    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/charities?status=cancelled`,
+    metadata: {
+      type: 'direct_donation',
+      charity_id: charityId,
+      user_id: user?.id || 'anonymous',
+    },
+  })
+
+  if (!session.url) throw new Error('Failed to create payment session.')
+  
+  // Redirect the user to Stripe
+  redirect(session.url)
+}
 
 export async function addScore(formData: FormData) {
   const supabase = await createClient()
@@ -29,7 +83,6 @@ export async function addScore(formData: FormData) {
   if (insertError) throw insertError
 
   // 2. Enforce the "Latest 5"
-  // Fetch all scores for this user, ordered by date (newest first)
   const { data: scores } = await supabase
     .from('scores')
     .select('id')
@@ -37,7 +90,6 @@ export async function addScore(formData: FormData) {
     .order('played_date', { ascending: false })
     .order('created_at', { ascending: false })
 
-  // If there are more than 5, slice off the newest 5, and delete the rest
   if (scores && scores.length > 5) {
     const idsToDelete = scores.slice(5).map(s => s.id)
     await supabase
@@ -46,7 +98,6 @@ export async function addScore(formData: FormData) {
       .in('id', idsToDelete)
   }
 
-  // Refresh the dashboard page to show the new data
   revalidatePath('/dashboard')
 }
 
@@ -62,7 +113,7 @@ export async function submitWinnerProof(formData: FormData) {
     .from('draw_winners')
     .update({ proof_image_url: proofUrl })
     .eq('id', winningId)
-    .eq('user_id', user.id) // Security check!
+    .eq('user_id', user.id)
 
   if (error) throw new Error('Failed to submit proof')
   
@@ -76,7 +127,6 @@ export async function deleteScore(formData: FormData) {
 
   const scoreId = formData.get('score_id') as string
 
-  // Securely delete the score ONLY if it belongs to the logged-in user
   const { error } = await supabase
     .from('scores')
     .delete()
@@ -96,7 +146,6 @@ export async function updateCharityPreference(formData: FormData) {
   const charityId = formData.get('charity_id') as string
   const percentage = parseInt(formData.get('percentage') as string)
 
-  // Update the user's profile with their impact choices
   const { error } = await supabase
     .from('profiles')
     .update({ 
@@ -120,7 +169,6 @@ export async function updateProfile(formData: FormData) {
 
   const fullName = formData.get('full_name') as string
 
-  // Update the user's name in the profiles table
   const { error } = await supabase
     .from('profiles')
     .update({ full_name: fullName })
