@@ -91,14 +91,30 @@ export default async function AdminDashboard({
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <Link href="/dashboard" className="text-sm font-medium text-zinc-500 hover:text-white mb-4 inline-block transition-colors">
-              ← Back to Dashboard
-            </Link>
-            <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">Admin <span className="text-blue-600">Command</span> Center</h1>
+            <div className="flex items-center gap-3 mb-3">
+              <Link 
+                href="/dashboard" 
+                className="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-blue-500 transition-colors flex items-center gap-1.5"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                Switch to Player View
+              </Link>
+              <span className="w-1 h-1 rounded-full bg-zinc-800" />
+              <span className="text-[10px] font-black uppercase text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20 animate-pulse">
+                Live Admin Mode
+              </span>
+            </div>
+            <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">
+              Admin <span className="text-blue-600">Command</span> Center
+            </h1>
           </div>
-          <Link href="/admin/users" className="bg-zinc-900 border border-zinc-800 text-white px-5 py-2.5 rounded-xl text-xs font-black tracking-widest uppercase hover:bg-zinc-800 transition-all flex items-center gap-2">
-            Manage Users
-          </Link>
+          
+          <div className="flex items-center gap-3">
+            <Link href="/admin/users" className="bg-zinc-900 border border-zinc-800 text-white px-5 py-2.5 rounded-xl text-xs font-black tracking-widest uppercase hover:bg-zinc-800 transition-all flex items-center gap-2 group">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover:text-blue-500 transition-colors"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Manage Users
+            </Link>
+          </div>
         </div>
 
         {/* ANALYTICS */}
@@ -129,7 +145,7 @@ export default async function AdminDashboard({
           </div>
         </div>
 
-        {/* SCORE VERIFICATION STATION (New Section) */}
+        {/* SCORE VERIFICATION STATION */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
           <div className="flex justify-between items-center mb-8">
             <div>

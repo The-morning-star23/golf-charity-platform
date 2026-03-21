@@ -6,10 +6,12 @@ import { signOut } from '@/app/actions'
 
 export default function Navbar({ 
   isLoggedIn, 
-  subscriptionStatus 
+  subscriptionStatus,
+  isAdmin = false // Added isAdmin prop with a default of false
 }: { 
   isLoggedIn: boolean,
-  subscriptionStatus?: string | null 
+  subscriptionStatus?: string | null,
+  isAdmin?: boolean // Added type definition
 }) {
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
@@ -67,8 +69,8 @@ export default function Navbar({
           {isLoggedIn ? (
             <div className="flex items-center gap-6 md:gap-8">
               {/* REBRANDED: Clubhouse -> Dashboard */}
-              <Link href="/dashboard" className="text-sm font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest">
-                Dashboard
+              <Link href={isAdmin ? "/admin" : "/dashboard"} className="text-sm font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest">
+                {isAdmin ? 'Admin' : 'Dashboard'}
               </Link>
 
               {/* PROFILE DROPDOWN TRIGGER */}
@@ -87,8 +89,22 @@ export default function Navbar({
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-3 w-56 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-2 animate-in fade-in zoom-in duration-200">
                     <div className="px-4 py-3 border-b border-zinc-800 mb-2">
-                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Member Tools</p>
+                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                        {isAdmin ? 'Admin Privileges' : 'Member Tools'}
+                      </p>
                     </div>
+
+                    {/* ADMIN ONLY LINK */}
+                    {isAdmin && (
+                      <Link 
+                        href="/admin" 
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-black text-blue-500 hover:text-white hover:bg-blue-600/10 rounded-xl transition-all mb-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        Command Center
+                      </Link>
+                    )}
                     
                     <Link 
                       href="/dashboard/profile" 

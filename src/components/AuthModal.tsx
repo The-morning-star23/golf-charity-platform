@@ -13,7 +13,7 @@ export default function AuthModal() {
   const authType = searchParams.get('auth')
   const isOpen = authType === 'login' || authType === 'register'
   
-  // 2. Derive isLogin directly instead of using useState/useEffect!
+  // 2. Derive isLogin directly
   const isLogin = authType === 'login' 
 
   const [email, setEmail] = useState('')
@@ -40,26 +40,50 @@ export default function AuthModal() {
     setError(null)
 
     if (isLogin) {
-      // LOGIN FLOW -> Send to Dashboard
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
-      else {
-        router.push('/dashboard')
+      // --- LOGIN FLOW ---
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+      
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+        return
+      }
+
+      // ROLE CHECK: Fetch the user's profile to see if they are an admin
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', data.user.id)
+          .single()
+
+        // SMART REDIRECT
+        if (profile?.is_admin) {
+          router.push('/admin')
+        } else {
+          router.push('/dashboard')
+        }
+        
         router.refresh()
       }
     } else {
-      // REGISTRATION FLOW -> Send to Subscribe Page
-      const { data, error } = await supabase.auth.signUp({ email, password })
-      if (error) setError(error.message)
-      else {
+      // --- REGISTRATION FLOW ---
+      const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+      
+      if (signUpError) {
+        setError(signUpError.message)
+      } else {
         if (data.user && fullName) {
+          // Update profile with full name on signup
           await supabase.from('profiles').update({ full_name: fullName }).eq('id', data.user.id)
         }
-        // PERFECT UX ROUTING: Send new users to the pricing page!
+        
+        // New users are always sent to the subscription/pricing page
         router.push('/subscribe')
         router.refresh()
       }
     }
+    
     setLoading(false)
   }
 
