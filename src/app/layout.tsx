@@ -25,24 +25,29 @@ export default async function RootLayout({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // --- NEW: Fetch Subscription Status for the Navbar ---
+  // --- UPDATED: Fetch Profile Data (Role + Subscription) for the Navbar ---
   let subscriptionStatus = null
+  let isAdmin = false
+
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subscription_status')
+      .select('subscription_status, is_admin') // Now fetching both fields
       .eq('id', user.id)
       .single()
+    
     subscriptionStatus = profile?.subscription_status
+    isAdmin = !!profile?.is_admin // Ensures it's a boolean (true/false)
   }
 
   return (
     <html lang="en">
       <body className={`${inter.className} bg-zinc-950 text-zinc-50 min-h-screen flex flex-col pt-[76px]`}>
         
-        {/* Pass the dynamic status to the Navbar */}
+        {/* The Navbar now knows your role and subscription status globally */}
         <Navbar 
           isLoggedIn={!!user} 
+          isAdmin={isAdmin} 
           subscriptionStatus={subscriptionStatus} 
         />
 
