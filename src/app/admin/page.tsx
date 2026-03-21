@@ -32,7 +32,6 @@ export default async function AdminDashboard() {
   const totalPrizePool = drawsData?.reduce((sum, draw) => sum + Number(draw.total_pool), 0) || 0
   const estimatedCharityTotal = (activeUsersCount || 0) * 10 
 
-  const { data: allUsers } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
   const { data: allCharities } = await supabase.from('charities').select('*').order('name', { ascending: true })
 
   // Charity Payout Report Logic
@@ -50,12 +49,12 @@ export default async function AdminDashboard() {
     }
   }).sort((a, b) => b.payout - a.payout) || []
 
-  // Queues and History
+  // Queues and History (Updated for Phase 09)
   const { data: pendingVerifications } = await supabase
     .from('draw_winners')
-    .select(`id, match_count, prize_amount, proof_image_url, verification_status, draws ( draw_month ), profiles ( email )`)
+    .select(`id, match_count, prize_amount, proof_image_url, verification_status, draws ( draw_month ), profiles ( email, full_name )`)
     .not('proof_image_url', 'is', null)
-    .in('verification_status', ['pending', 'approved'])
+    .neq('verification_status', 'paid')
     .order('created_at', { ascending: false })
 
   const { data: pastDraws } = await supabase
@@ -96,74 +95,108 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* PHASE 06: DRAW ENGINE (Interactive Client Component) */}
+        {/* DRAW ENGINE */}
         <DrawControl />
 
-        {/* PHASE 07: CHARITY PAYOUT REPORT */}
+        {/* VERIFICATION QUEUE (Winner Review Station) */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Charity Payout Report</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {charityReport.map((charity) => (
-              <div key={charity.id} className="bg-zinc-950 p-6 rounded-2xl border border-zinc-800">
-                <p className="text-zinc-400 font-bold mb-1 truncate">{charity.name}</p>
-                <p className="text-2xl font-black text-white">${charity.payout.toFixed(2)}</p>
-                <p className="text-xs text-zinc-600 mt-2 italic">{charity.supporterCount} members selected this</p>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Winner Review Station</h2>
+            <span className="bg-zinc-800 text-zinc-400 text-[10px] font-black px-3 py-1 rounded-full uppercase">
+              {pendingVerifications?.length || 0} Pending
+            </span>
+          </div>
+          <div className="space-y-4">
+            {pendingVerifications && pendingVerifications.length > 0 ? pendingVerifications.map((item: any) => (
+              <div key={item.id} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div className="flex-1 space-y-1">
+                  <p className="text-white font-bold">{item.profiles?.full_name || item.profiles?.email}</p>
+                  <p className="text-xs text-zinc-500 uppercase font-black">{item.draws?.draw_month} • Matched {item.match_count}</p>
+                  <p className="text-green-500 font-black text-xl">${Number(item.prize_amount).toFixed(2)}</p>
+                </div>
+
+                {/* Proof Link */}
+                <div className="w-full md:w-auto">
+                  <a 
+                    href={item.proof_image_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block px-6 py-3 bg-blue-600/10 border border-blue-500/20 rounded-xl text-center hover:bg-blue-600/20 transition-colors"
+                  >
+                    <span className="text-blue-500 text-xs font-bold uppercase tracking-widest">View Scorecard Proof ↗</span>
+                  </a>
+                </div>
+
+                <div className="flex gap-2 w-full md:w-auto">
+                  {item.verification_status === 'pending' ? (
+                    <>
+                      <form action={updateVerificationStatus} className="flex-1">
+                        <input type="hidden" name="winner_id" value={item.id} />
+                        <input type="hidden" name="status" value="approved" />
+                        <button className="w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-green-500 transition-colors">Approve</button>
+                      </form>
+                      <form action={updateVerificationStatus} className="flex-1">
+                        <input type="hidden" name="winner_id" value={item.id} />
+                        <input type="hidden" name="status" value="rejected" />
+                        <button className="w-full bg-red-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-red-500 transition-colors">Reject</button>
+                      </form>
+                    </>
+                  ) : (
+                    <form action={updateVerificationStatus} className="w-full">
+                      <input type="hidden" name="winner_id" value={item.id} />
+                      <input type="hidden" name="status" value="paid" />
+                      <button className="w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-400 transition-colors shadow-lg shadow-blue-500/20">Mark as Paid</button>
+                    </form>
+                  )}
+                </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center py-12 border-2 border-dashed border-zinc-800 rounded-3xl italic text-zinc-600">
+                The verification queue is clear.
+              </div>
+            )}
           </div>
         </div>
 
-        {/* USER DIRECTORY */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">User Directory</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-zinc-800 text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                  <th className="pb-4">Name</th>
-                  <th className="pb-4">Email</th>
-                  <th className="pb-4">Plan Status</th>
-                  <th className="pb-4 text-right">Join Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {allUsers?.map((u) => (
-                  <tr key={u.id} className="group">
-                    <td className="py-4 font-bold text-white">{u.full_name || '—'}</td>
-                    <td className="py-4 text-zinc-400">{u.email}</td>
-                    <td className="py-4">
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${u.subscription_status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-800 text-zinc-500'}`}>
-                        {u.subscription_status}
-                      </span>
-                    </td>
-                    <td className="py-4 text-right text-zinc-600 text-sm">{new Date(u.created_at).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* CHARITY MANAGEMENT & VERIFICATION QUEUE */}
+        {/* CHARITY MANAGEMENT */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* CHARITY MANAGER */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 h-fit">
-            <h2 className="text-2xl font-bold text-white mb-6">Manage Charities</h2>
+            <h2 className="text-2xl font-bold text-white mb-6 uppercase tracking-tight">Charity Partners</h2>
             <form action={addCharity} className="space-y-4 mb-8">
-              <input name="name" placeholder="Charity Name" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" required />
-              <textarea name="description" placeholder="Short Bio" rows={2} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" required />
-              <input name="image_url" placeholder="Logo Image URL" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" required />
-              <button className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20">Add Partner</button>
+              <div className="grid grid-cols-2 gap-4">
+                <input name="name" placeholder="Charity Name" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" required />
+                <input name="image_url" placeholder="Image URL" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <textarea name="description" placeholder="Description" rows={2} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500" required />
+              
+              {/* Feature/Event Fields */}
+              <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-2xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" name="is_featured" id="is_featured" className="w-4 h-4 rounded bg-zinc-900 border-zinc-800 text-blue-600 focus:ring-0" />
+                  <label htmlFor="is_featured" className="text-xs font-bold text-zinc-400 uppercase">Feature on Homepage</label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <input name="event_name" placeholder="Event Name (optional)" className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white" />
+                  <input name="event_date" placeholder="Date (e.g. Oct 12)" className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white" />
+                </div>
+              </div>
+
+              <button className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]">
+                Add Partner & Sync
+              </button>
             </form>
+            
             <div className="space-y-3">
               {allCharities?.map(c => (
-                <div key={c.id} className="flex justify-between items-center p-4 bg-zinc-950 border border-zinc-800 rounded-2xl">
-                  <span className="text-sm font-bold text-white">{c.name}</span>
+                <div key={c.id} className="flex justify-between items-center p-4 bg-zinc-950 border border-zinc-800 rounded-2xl group">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-white">{c.name}</span>
+                    {c.is_featured && <span className="bg-amber-500/10 text-amber-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border border-amber-500/20">Featured</span>}
+                  </div>
                   <form action={deleteCharity}>
                     <input type="hidden" name="charity_id" value={c.id} />
-                    <button className="text-zinc-600 hover:text-red-500 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    <button className="text-zinc-700 hover:text-red-500 transition-colors p-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                     </button>
                   </form>
                 </div>
@@ -171,68 +204,41 @@ export default async function AdminDashboard() {
             </div>
           </div>
 
-          {/* VERIFICATION QUEUE */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Payout Verification</h2>
-            <div className="space-y-4">
-              {pendingVerifications && pendingVerifications.length > 0 ? pendingVerifications.map((item: any) => (
-                <div key={item.id} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="text-white font-bold text-sm">{item.profiles?.email}</p>
-                      <p className="text-xs text-zinc-500">{item.draws?.draw_month} Draw</p>
-                    </div>
-                    <p className="text-green-500 font-black">${Number(item.prize_amount).toFixed(2)}</p>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 h-fit">
+            <h2 className="text-2xl font-bold text-white mb-6 uppercase tracking-tight">Payout Report</h2>
+            <div className="space-y-3">
+              {charityReport.map((charity) => (
+                <div key={charity.id} className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 flex justify-between items-center">
+                  <div>
+                    <p className="text-white font-bold text-sm">{charity.name}</p>
+                    <p className="text-[10px] text-zinc-500 uppercase font-black">{charity.supporterCount} Members</p>
                   </div>
-                  <div className="flex gap-2">
-                    {item.verification_status === 'pending' ? (
-                      <>
-                        <form action={updateVerificationStatus} className="flex-1">
-                          <input type="hidden" name="winner_id" value={item.id} />
-                          <input type="hidden" name="status" value="approved" />
-                          <button className="w-full bg-green-500/10 text-green-500 border border-green-500/20 py-2 rounded-lg text-xs font-bold hover:bg-green-500/20">Approve</button>
-                        </form>
-                        <form action={updateVerificationStatus} className="flex-1">
-                          <input type="hidden" name="winner_id" value={item.id} />
-                          <input type="hidden" name="status" value="rejected" />
-                          <button className="w-full bg-red-500/10 text-red-500 border border-red-500/20 py-2 rounded-lg text-xs font-bold hover:bg-red-500/20">Reject</button>
-                        </form>
-                      </>
-                    ) : (
-                      <form action={updateVerificationStatus} className="w-full">
-                        <input type="hidden" name="winner_id" value={item.id} />
-                        <input type="hidden" name="status" value="paid" />
-                        <button className="w-full bg-blue-600 text-white py-2 rounded-lg text-xs font-bold">Mark Paid</button>
-                      </form>
-                    )}
-                  </div>
+                  <p className="text-xl font-black text-blue-500">${charity.payout.toFixed(2)}</p>
                 </div>
-              )) : (
-                <p className="text-center py-10 text-zinc-600 text-sm border-2 border-dashed border-zinc-800 rounded-2xl italic">Queue is currently empty</p>
-              )}
+              ))}
             </div>
           </div>
         </div>
 
         {/* DRAW HISTORY (READ ONLY) */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-8">Draw History Ledger</h2>
+          <h2 className="text-2xl font-bold text-white mb-8 uppercase tracking-tight">Draw Ledger</h2>
           <div className="space-y-6">
             {pastDraws?.map((draw: any) => (
               <div key={draw.id} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-8">
                 <div className="flex flex-wrap justify-between items-center gap-6">
                   <div>
                     <h3 className="text-xl font-black text-white">{draw.draw_month}</h3>
-                    <p className="text-sm text-zinc-500">{new Date(draw.created_at).toLocaleDateString()}</p>
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{new Date(draw.created_at).toLocaleDateString()}</p>
                   </div>
                   <div className="flex gap-2">
                     {draw.winning_numbers.map((n: number) => (
-                      <div key={n} className="w-10 h-10 rounded-full border border-zinc-800 flex items-center justify-center font-bold text-white text-sm bg-zinc-900">{n}</div>
+                      <div key={n} className="w-10 h-10 rounded-full border border-zinc-800 flex items-center justify-center font-bold text-white text-sm bg-zinc-900 shadow-inner">{n}</div>
                     ))}
                   </div>
                   <div className="text-right">
                     <p className="text-green-500 font-black text-xl">${draw.total_pool.toFixed(2)}</p>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Total Pool</p>
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total Pool</p>
                   </div>
                 </div>
               </div>

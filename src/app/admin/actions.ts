@@ -223,3 +223,20 @@ export async function deleteCharity(formData: FormData) {
   if (error) throw new Error('Failed to delete charity.')
   revalidatePath('/admin')
 }
+
+export async function updateWinnerStatus(formData: FormData) {
+  await requireAdmin()
+
+  const winnerId = formData.get('winner_id') as string
+  const newStatus = formData.get('status') as string // 'approved', 'rejected', or 'paid'
+
+  const { error } = await supabaseAdmin
+    .from('draw_winners')
+    .update({ verification_status: newStatus })
+    .eq('id', winnerId)
+
+  if (error) throw new Error('Failed to update winner status')
+
+  revalidatePath('/admin')
+  revalidatePath('/dashboard') // Refresh for the user too
+}
